@@ -220,6 +220,33 @@
   .cheer-spark{font-size:24px;color:var(--honey-light);margin-bottom:4px;}
   .cheer-msg{font-family:'IBM Plex Sans Arabic',sans-serif;font-weight:600;font-size:19px;line-height:1.5;color:var(--paper-text);margin:0 0 16px;}
   .cheer-btn{width:100%;}
+
+  /* ---------- note (i) marker + tooltip ---------- */
+  .note-wrap{position:relative;display:inline-flex;align-items:center;margin:0 4px;}
+  .note-btn{width:16px;height:16px;border-radius:50%;border:1px solid var(--border-strong);background:rgba(215,154,44,0.1);color:var(--honey-light);font-family:'IBM Plex Mono','IBM Plex Sans Arabic',monospace;font-size:10px;font-style:italic;font-weight:700;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;flex:none;transition:all .18s ease;}
+  .note-btn:hover{background:var(--honey);color:var(--ink-deep);border-color:var(--honey-light);}
+  .note-btn:focus-visible{outline:2px solid var(--honey-light);outline-offset:2px;}
+  .note-pop{display:none;position:absolute;bottom:calc(100% + 9px);right:50%;transform:translateX(50%);width:max-content;max-width:220px;background:linear-gradient(180deg,#1B4038,#102723);border:1px solid var(--border-strong);border-radius:11px;padding:9px 12px;font-size:11.5px;line-height:1.6;color:var(--paper-text);text-align:right;box-shadow:0 10px 30px rgba(0,0,0,0.45);z-index:25;white-space:normal;font-weight:400;}
+  .note-pop::after{content:"";position:absolute;top:100%;right:50%;transform:translateX(50%);border:6px solid transparent;border-top-color:#102723;}
+  .note-pop.show{display:block;animation:notePop .18s ease;}
+  @keyframes notePop{0%{opacity:0;transform:translateX(50%) translateY(4px);}100%{opacity:1;transform:translateX(50%) translateY(0);}}
+  @media(hover:hover){ .note-wrap:hover .note-pop{display:block;} }
+
+  /* ---------- achievements (إنجازاتي) ---------- */
+  .ach-toggle{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;margin-top:16px;background:linear-gradient(135deg, rgba(215,154,44,0.14), rgba(215,154,44,0.05));border:1px solid var(--border-strong);color:var(--honey-light);border-radius:999px;padding:11px 18px;font-family:'IBM Plex Sans Arabic','Inter',sans-serif;font-size:13.5px;font-weight:600;cursor:pointer;transition:all .18s ease;}
+  .ach-toggle:hover{background:linear-gradient(135deg, rgba(215,154,44,0.22), rgba(215,154,44,0.08));}
+  .ach-toggle:focus-visible{outline:2px solid var(--honey-light);outline-offset:2px;}
+  .ach-count-pill{background:var(--honey);color:var(--ink-deep);font-weight:700;font-size:11px;min-width:20px;height:20px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;padding:0 6px;}
+  .ach-caret{font-size:11px;color:var(--muted-2);transition:transform .3s ease;margin-right:-2px;}
+  .ach-toggle.open .ach-caret{transform:rotate(180deg);}
+  .ach-panel{display:none;margin-top:12px;}
+  .ach-panel.show{display:block;animation:notePop .22s ease;}
+  .ach-grid{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
+  .ach-chip{display:inline-flex;align-items:center;gap:8px;background:rgba(10,33,29,0.5);border:1px solid var(--border);border-radius:999px;padding:7px 13px;}
+  .ach-chip .ach-emoji{font-size:16px;line-height:1;}
+  .ach-chip .ach-name{font-size:12.5px;color:var(--paper-text);font-weight:500;}
+  .ach-chip .ach-x{font-family:'IBM Plex Sans Arabic','IBM Plex Mono',monospace;font-size:12px;font-weight:700;color:var(--honey-light);background:rgba(215,154,44,0.14);border-radius:999px;padding:2px 8px;}
+  .ach-empty{text-align:center;font-size:12.5px;color:var(--muted);line-height:1.7;margin:6px 0 2px;}
 </style>
 </head>
 <body>
@@ -269,6 +296,12 @@
     <p class="modal-eyebrow"><b id="mDayNum">١</b><span class="mday-of">من <span id="mCycleLen">٤٥</span></span></p>
     <div class="chain" id="beadChain"></div>
     <p class="chain-caption" id="chainCaption"></p>
+    <button class="ach-toggle" id="achievementsToggle" aria-expanded="false">
+      <span class="ach-toggle-label">🏆 إنجازاتي</span>
+      <span class="ach-count-pill" id="achTotalPill"></span>
+      <span class="ach-caret">▾</span>
+    </button>
+    <div class="ach-panel" id="achievementsPanel"></div>
   </div>
 </div>
 
@@ -300,12 +333,13 @@ const ROW_ID = 'shared';
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const HIJRI_MONTHS = ['محرّم','صفر','ربيع الأول','ربيع الآخر','جمادى الأولى','جمادى الآخرة','رجب','شعبان','رمضان','شوّال','ذو القعدة','ذو الحجّة'];
+const GREGORIAN_MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
 const WEEKDAYS = ['الأحد','الإثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];        // full (selectors)
 const WEEKDAYS_SHORT = ['أحد','إثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت'];               // button labels
 const SECTIONS = [
   {key:'daily', label:'أهدافي اليوم', match: h=>h.freq==='daily'},
   {key:'weekly', label:'أهدافي هذا الإسبوع', match: h=>h.freq==='weekly'},
-  {key:'monthly', label:'أهدافي هذا الشهر', match: h=>h.freq==='monthly-hijri' || h.freq==='monthly-day'}
+  {key:'monthly', label:'أهدافي هذا الشهر', match: h=>h.freq==='monthly-hijri' || h.freq==='monthly-day' || h.freq==='monthly-date'}
 ];
 
 /* Western → Eastern Arabic numerals, for a fully-Arabic display */
@@ -319,6 +353,34 @@ function daysLabel(n){
   if(n===2) return 'يومان';
   if(n<=10) return ar(n)+' أيام';
   return ar(n)+' يوماً';
+}
+/* "how many days left" phrasing — clearer for dated goals (باقي ٢٠ يوم) */
+function untilLabel(n){
+  if(n<=0) return 'اليوم';
+  if(n===1) return 'باقي يوم';
+  if(n===2) return 'باقي يومين';
+  if(n<=10) return 'باقي '+ar(n)+' أيام';
+  return 'باقي '+ar(n)+' يوم';
+}
+/* Next upcoming occurrence of a Gregorian month/day (this year, else next year).
+   Day is clamped to the month's length (e.g. 31 → 30/28). */
+function nextAnnualDate(monthOfYear, dayOfMonth){
+  monthOfYear = Math.min(Math.max(Number(monthOfYear)||1,1),12);
+  dayOfMonth  = Math.min(Math.max(Number(dayOfMonth)||1,1),31);
+  const today = todayDate();
+  function make(yy){
+    const dim = new Date(yy, monthOfYear, 0).getDate();   // days in that month
+    const dd = Math.min(dayOfMonth, dim);
+    const dt = new Date(yy, monthOfYear-1, dd); dt.setHours(0,0,0,0);
+    return dt;
+  }
+  let occ = make(today.getFullYear());
+  if(occ < today) occ = make(today.getFullYear()+1);
+  return occ;
+}
+/* escape user text before putting it into markup (notes can contain anything) */
+function escapeHTML(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
 /* Arabic ordinal word for a day count (اليوم الأول، الثاني، ... الخامس والأربعون).
@@ -343,6 +405,8 @@ let collapsedSections = {daily:false, weekly:false, monthly:false};
 let modalOpen = false;
 let editMode = false;
 let openEditFormId = null;
+let openNoteId = null;         // which goal's note tooltip is tapped open
+let achievementsOpen = false;  // whether the إنجازاتي panel is expanded
 const EDIT_PASSCODE = '18273645';
 
 /* ================= date / hijri helpers ================= */
@@ -370,7 +434,36 @@ function islamicFromJDN(jdn){
   const year=30*n+j-30;
   return {year,month,day};
 }
-function toHijri(d){return islamicFromJDN(gregorianToJDN(d.getFullYear(),d.getMonth()+1,d.getDate()));}
+/* Hijri conversion — uses the browser's Umm al-Qura calendar (the official Saudi
+   calendar, anchored to Asia/Riyadh) so the date matches what Abod sees locally.
+   Falls back to the tabular algorithm above if the calendar isn't available.
+   Cached per Gregorian day since it's called a lot during render. */
+const _hijriCache = {};
+let _ummAlQuraFmt = null;
+try{
+  _ummAlQuraFmt = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', {
+    timeZone:'Asia/Riyadh', year:'numeric', month:'numeric', day:'numeric'
+  });
+}catch(e){ _ummAlQuraFmt = null; }
+function toHijri(d){
+  const key = dateKey(d);
+  if(_hijriCache[key]) return _hijriCache[key];
+  let res = null;
+  if(_ummAlQuraFmt){
+    try{
+      let y, m, day;
+      for(const p of _ummAlQuraFmt.formatToParts(d)){
+        if(p.type==='year') y=parseInt(p.value,10);
+        else if(p.type==='month') m=parseInt(p.value,10);
+        else if(p.type==='day') day=parseInt(p.value,10);
+      }
+      if(y && m && day) res = {year:y, month:m, day:day};
+    }catch(e){ res = null; }
+  }
+  if(!res) res = islamicFromJDN(gregorianToJDN(d.getFullYear(), d.getMonth()+1, d.getDate()));
+  _hijriCache[key] = res;
+  return res;
+}
 function findNextHijri17(fromDate, targetDay){
   const target = targetDay || 17;
   for(let i=0;i<45;i++){
@@ -548,6 +641,57 @@ function cycleStatus(){
   return {start, today, length, dayNum, complete};
 }
 
+/* ================= achievements (إنجازاتي) =================
+   An "achievement" is a completed check-in whose period has fully ended — i.e.
+   the goal stayed checked until the day/week/month rolled over. These are derived
+   straight from the existing check-in data (no separate list stored), and past
+   periods are never toggleable in the UI, so they're effectively permanent.
+   The period key is interpreted according to the habit's own frequency. */
+function periodElapsed(h, pk){
+  const today = todayDate();
+  if(h.freq==='daily'){
+    return pk < dateKey(today);                       // ISO strings compare correctly
+  }
+  if(h.freq==='weekly'){
+    return pk < dateKey(weekStart(today));            // whole week has rolled over
+  }
+  if(h.freq==='monthly-hijri'){
+    const [hy,hm] = pk.split('-').map(Number);
+    const cur = toHijri(today);
+    return hy<cur.year || (hy===cur.year && hm<cur.month);
+  }
+  if(h.freq==='monthly-day'){                         // legacy recurring key 'YYYY-M'
+    const [y,m] = pk.split('-').map(Number);
+    const cy=today.getFullYear(), cm=today.getMonth()+1;
+    return y<cy || (y===cy && m<cm);
+  }
+  if(h.freq==='monthly-date'){                        // specific-date key 'YYYY-M-D'
+    const [y,m,dd] = pk.split('-').map(Number);
+    if(dd===undefined || isNaN(dd)){                  // legacy 'YYYY-M' key on a converted goal
+      const cy=today.getFullYear(), cm=today.getMonth()+1;
+      return y<cy || (y===cy && m<cm);
+    }
+    const occ = new Date(y, m-1, dd); occ.setHours(0,0,0,0);
+    return occ < today;
+  }
+  return false;
+}
+/* [{habit, count}], one per habit that has ≥1 locked-in completion, count desc */
+function achievementsList(){
+  const out=[];
+  state.habits.forEach(h=>{
+    const periods = state.checkins[h.id];
+    if(!periods) return;
+    let count=0;
+    for(const pk in periods){
+      if(truthy(periods[pk]) && periodElapsed(h, pk)) count++;
+    }
+    if(count>0) out.push({habit:h, count});
+  });
+  out.sort((a,b)=> b.count-a.count || String(a.habit.name).localeCompare(String(b.habit.name),'ar'));
+  return out;
+}
+
 /* ================= rendering ================= */
 function render(){
   renderDayChip();
@@ -618,13 +762,27 @@ function controlHTML(h, periodKey, dayLabel){
   return `<button class="pdot${on?' on':''}" data-habit="${h.id}" data-period="${periodKey}" aria-label="${h.name}"></button>`;
 }
 
+/* an (i) marker shown when a goal has a note — tap (or hover on desktop) to read it */
+function noteIconHTML(h){
+  if(!h.note) return '';
+  const open = openNoteId===h.id;
+  return `<span class="note-wrap">
+    <button class="note-btn" data-note-toggle="${h.id}" aria-label="ملاحظة">i</button>
+    <span class="note-pop${open?' show':''}" role="tooltip">${escapeHTML(h.note)}</span>
+  </span>`;
+}
+/* goal name + optional note marker, reused across every row type */
+function goalNameHTML(h){
+  return `<span class="goal-name">${h.name}</span>${noteIconHTML(h)}`;
+}
+
 function goalRowHTML(h){
   const today=dateKey(todayDate());
   const wk=dateKey(weekStart(todayDate()));
 
   if(h.freq==='daily'){
     return goalRowWrap(h, `
-      <div class="goal-left"><span class="goal-emoji">${h.emoji}</span><span class="goal-name">${h.name}</span></div>
+      <div class="goal-left"><span class="goal-emoji">${h.emoji}</span>${goalNameHTML(h)}</div>
       <div class="controls">${controlHTML(h, today)}</div>
     `, isDone(h.id, today));
   }
@@ -633,7 +791,7 @@ function goalRowHTML(h){
     const nd = nextWeekday(todayDate(), dow);
     const badge = nd.daysAway>=0 ? daysLabel(nd.daysAway) : 'هذا الأسبوع';
     return goalRowWrap(h, `
-      <div class="goal-left"><span class="goal-emoji">${h.emoji}</span><span class="goal-name">${h.name}</span>
+      <div class="goal-left"><span class="goal-emoji">${h.emoji}</span>${goalNameHTML(h)}
         <span class="goal-badge">${badge}</span></div>
       <div class="controls">${controlHTML(h, wk, WEEKDAYS_SHORT[dow])}</div>
     `, isDone(h.id, wk));
@@ -643,17 +801,29 @@ function goalRowHTML(h){
     if(!next) return '';
     const pkey=hijriPeriodKey(next.hijri);
     const daysAway=daysBetween(todayDate(), next.date);
+    const dateLabel=ar(next.date.getDate())+' '+GREGORIAN_MONTHS[next.date.getMonth()];
     return goalRowWrap(h, `
-      <div class="goal-left"><span class="goal-emoji">${h.emoji}</span><span class="goal-name">${h.name}</span>
-        <span class="goal-badge">${daysLabel(daysAway)}</span></div>
+      <div class="goal-left"><span class="goal-emoji">${h.emoji}</span>${goalNameHTML(h)}
+        <span class="goal-badge">${dateLabel} · ${untilLabel(daysAway)}</span></div>
       <div class="controls">${controlHTML(h, pkey)}</div>
     `, isDone(h.id, pkey));
   }
-  if(h.freq==='monthly-day'){
+  if(h.freq==='monthly-date'){
+    const occ=nextAnnualDate(h.monthOfYear, h.dayOfMonth);
+    const daysAway=daysBetween(todayDate(), occ);
+    const pkey=occ.getFullYear()+'-'+h.monthOfYear+'-'+h.dayOfMonth;
+    const dateLabel=ar(occ.getDate())+' '+GREGORIAN_MONTHS[occ.getMonth()];
+    return goalRowWrap(h, `
+      <div class="goal-left"><span class="goal-emoji">${h.emoji}</span>${goalNameHTML(h)}
+        <span class="goal-badge">${dateLabel} · ${untilLabel(daysAway)}</span></div>
+      <div class="controls">${controlHTML(h, pkey)}</div>
+    `, isDone(h.id, pkey));
+  }
+  if(h.freq==='monthly-day'){   // legacy recurring day-of-month goals
     const today2=todayDate();
     const mkey=today2.getFullYear()+'-'+(today2.getMonth()+1);
     return goalRowWrap(h, `
-      <div class="goal-left"><span class="goal-emoji">${h.emoji}</span><span class="goal-name">${h.name}</span>
+      <div class="goal-left"><span class="goal-emoji">${h.emoji}</span>${goalNameHTML(h)}
         <span class="goal-badge">يوم ${ar(h.dayOfMonth)}</span></div>
       <div class="controls">${controlHTML(h, mkey)}</div>
     `, isDone(h.id, mkey));
@@ -684,17 +854,22 @@ function editFormHTML(h){
   if(h.freq==='weekly'){
     const dow=(h.dayOfWeek===undefined||h.dayOfWeek===null)?5:h.dayOfWeek;
     extraField=`<div class="row2"><label class="mini-label">اليوم</label>${weekdaySelectHTML('edit-extra-'+h.id, dow)}</div>`;
-  }else if(h.freq==='monthly-day'){
-    extraField=`<div class="row2"><label class="mini-label">يوم الشهر</label><input type="number" id="edit-extra-${h.id}" value="${h.dayOfMonth}" min="1" max="28"></div>`;
+  }else if(h.freq==='monthly-date' || h.freq==='monthly-day'){
+    // both legacy day-of-month and new specific-date goals edit as Gregorian month + day
+    const mo=(h.monthOfYear|| (todayDate().getMonth()+1));
+    const dd=(h.dayOfMonth||1);
+    extraField=`<div class="row2"><label class="mini-label">الشهر</label>${gregMonthSelectHTML('edit-month-'+h.id, mo)}</div>
+      <div class="row2"><label class="mini-label">اليوم</label><input type="number" id="edit-extra-${h.id}" value="${dd}" min="1" max="31"></div>`;
   }else if(h.freq==='monthly-hijri'){
     extraField=`<div class="row2"><label class="mini-label">اليوم الهجري</label><input type="number" id="edit-extra-${h.id}" value="${h.hijriDay}" min="1" max="30"></div>`;
   }
   return `<div class="edit-form${open?' show':''}" id="editform-${h.id}">
     <div class="row2">
-      <input type="text" id="edit-name-${h.id}" placeholder="اسم الهدف" value="${h.name.replace(/"/g,'&quot;')}">
-      <input type="text" id="edit-emoji-${h.id}" placeholder="🌱" value="${h.emoji}">
+      <input type="text" id="edit-name-${h.id}" placeholder="اسم الهدف" value="${escapeHTML(h.name)}">
+      <input type="text" id="edit-emoji-${h.id}" placeholder="🌱" value="${escapeHTML(h.emoji)}">
     </div>
     ${extraField}
+    <input type="text" id="edit-note-${h.id}" placeholder="ملاحظة (اختياري)" value="${escapeHTML(h.note||'')}">
     <div class="mini-form-actions">
       <button class="btn-mini save" data-edit-save="${h.id}">حفظ</button>
       <button class="btn-mini cancel" data-edit-cancel="${h.id}">إلغاء</button>
@@ -717,6 +892,7 @@ function sectionFraction(sec){
     if(h.freq==='daily') pk=today;
     else if(h.freq==='weekly') pk=wk;
     else if(h.freq==='monthly-hijri'){ const next=findNextHijri17(todayDate(), h.hijriDay); pk=next?hijriPeriodKey(next.hijri):null; }
+    else if(h.freq==='monthly-date'){ const occ=nextAnnualDate(h.monthOfYear, h.dayOfMonth); pk=occ.getFullYear()+'-'+h.monthOfYear+'-'+h.dayOfMonth; }
     else if(h.freq==='monthly-day') pk=mkey;
     if(pk && isDone(h.id, pk)) done++;
   });
@@ -727,6 +903,11 @@ function sectionFraction(sec){
 function weekdaySelectHTML(id, selected){
   return `<select id="${id}" class="wd-select">`+
     WEEKDAYS.map((w,i)=>`<option value="${i}"${i===selected?' selected':''}>${w}</option>`).join('')+
+    `</select>`;
+}
+function gregMonthSelectHTML(id, selected){   // selected is 1-based month number
+  return `<select id="${id}" class="wd-select">`+
+    GREGORIAN_MONTHS.map((w,i)=>`<option value="${i+1}"${(i+1)===selected?' selected':''}>${w}</option>`).join('')+
     `</select>`;
 }
 function renderSections(){
@@ -748,7 +929,9 @@ function renderSections(){
             <div class="mini-form" id="form-${sec.key}">
               <input type="text" id="name-${sec.key}" placeholder="اسم الهدف">
               ${sec.key==='weekly' ? `<div class="row2"><label class="mini-label">اليوم</label>${weekdaySelectHTML('extra-'+sec.key, 5)}</div>` : ''}
-              ${sec.key==='monthly' ? `<div class="row2"><label class="mini-label">يوم الشهر</label><input type="number" id="extra-${sec.key}" placeholder="يوم الشهر" value="1" min="1" max="28"></div>` : ''}
+              ${sec.key==='monthly' ? `<div class="row2"><label class="mini-label">الشهر</label>${gregMonthSelectHTML('extra-month-'+sec.key, todayDate().getMonth()+1)}</div>
+              <div class="row2"><label class="mini-label">اليوم</label><input type="number" id="extra-${sec.key}" value="1" min="1" max="31"></div>` : ''}
+              <input type="text" id="note-${sec.key}" placeholder="ملاحظة (اختياري)">
               <div class="mini-form-actions">
                 <button class="btn-mini save" data-save="${sec.key}">إضافة</button>
                 <button class="btn-mini cancel" data-cancel="${sec.key}">إلغاء</button>
@@ -807,15 +990,24 @@ function bindSectionEvents(){
       const nameEl=document.getElementById('edit-name-'+id);
       const emojiEl=document.getElementById('edit-emoji-'+id);
       const extraEl=document.getElementById('edit-extra-'+id);
+      const noteEl=document.getElementById('edit-note-'+id);
       const name=nameEl.value.trim();
       if(!name) return;
       h.name=name;
       h.emoji=(emojiEl.value.trim())||h.emoji;
+      const note=noteEl ? noteEl.value.trim() : '';
+      if(note) h.note=note; else delete h.note;   // keep the blob lean when empty
       if(extraEl){
         const val=Number(extraEl.value);
         if(h.freq==='weekly') h.dayOfWeek=Math.min(Math.max(val,0),6);
-        else if(h.freq==='monthly-day') h.dayOfMonth=Math.min(Math.max(val||1,1),28);
         else if(h.freq==='monthly-hijri') h.hijriDay=Math.min(Math.max(val||1,1),30);
+        else if(h.freq==='monthly-date' || h.freq==='monthly-day'){
+          // legacy day-of-month goals become specific month+day goals on edit
+          const moEl=document.getElementById('edit-month-'+id);
+          h.freq='monthly-date';
+          h.monthOfYear=moEl ? Math.min(Math.max(Number(moEl.value)||1,1),12) : (h.monthOfYear||1);
+          h.dayOfMonth=Math.min(Math.max(val||1,1),31);
+        }
       }
       openEditFormId=null;
       saveState(); render();
@@ -838,6 +1030,14 @@ function bindSectionEvents(){
       if(addBtn) addBtn.style.display='';
     };
   });
+  document.querySelectorAll('[data-note-toggle]').forEach(btn=>{
+    btn.onclick=(ev)=>{
+      ev.stopPropagation();
+      const id=btn.dataset.noteToggle;
+      openNoteId = openNoteId===id ? null : id;
+      renderSections();
+    };
+  });
   document.querySelectorAll('[data-save]').forEach(btn=>{
     btn.onclick=(ev)=>{
       ev.stopPropagation();
@@ -846,10 +1046,18 @@ function bindSectionEvents(){
       if(!name) return;
       const extraInput = document.getElementById('extra-'+k);
       const extra = extraInput ? Number(extraInput.value) : 0;
+      const noteInput = document.getElementById('note-'+k);
+      const note = noteInput ? noteInput.value.trim() : '';
       const habit={id:'g_'+Date.now(), name, emoji:'🌱', builtin:false};
       if(k==='daily') habit.freq='daily';
       else if(k==='weekly'){ habit.freq='weekly'; habit.dayOfWeek=Math.min(Math.max(extra,0),6); }
-      else if(k==='monthly'){ habit.freq='monthly-day'; habit.dayOfMonth=Math.min(Math.max(extra||1,1),28); }
+      else if(k==='monthly'){
+        const moInput=document.getElementById('extra-month-'+k);
+        habit.freq='monthly-date';
+        habit.monthOfYear=moInput ? Math.min(Math.max(Number(moInput.value)||1,1),12) : (todayDate().getMonth()+1);
+        habit.dayOfMonth=Math.min(Math.max(extra||1,1),31);
+      }
+      if(note) habit.note=note;
       state.habits.push(habit);
       saveState();
       render();
@@ -893,6 +1101,39 @@ function renderModal(){
 
   const cap=document.getElementById('chainCaption');
   if(cap) cap.textContent = `${ar(full)} من ${ar(tracked)} يوم مكتمل`;
+
+  renderAchievements();
+}
+
+/* ---- إنجازاتي panel: aggregated, locked-in achievements ---- */
+function renderAchievements(){
+  const toggle=document.getElementById('achievementsToggle');
+  const panel=document.getElementById('achievementsPanel');
+  const pill=document.getElementById('achTotalPill');
+  if(!toggle||!panel) return;
+
+  const list=achievementsList();
+  const total=list.reduce((s,a)=>s+a.count,0);
+
+  pill.textContent = total>0 ? ar(total) : '';
+  pill.style.display = total>0 ? '' : 'none';
+  toggle.classList.toggle('open', achievementsOpen);
+  toggle.setAttribute('aria-expanded', achievementsOpen ? 'true' : 'false');
+  panel.classList.toggle('show', achievementsOpen);
+
+  if(!achievementsOpen){ panel.innerHTML=''; return; }
+
+  if(list.length===0){
+    panel.innerHTML=`<p class="ach-empty">لسا ما في إنجازات مسجّلة 🚀<br>كمّل أهدافك ونهاية اليوم بتلقاها هنا.</p>`;
+    return;
+  }
+  panel.innerHTML=`<div class="ach-grid">`+
+    list.map(a=>`<div class="ach-chip">
+        <span class="ach-emoji">${a.habit.emoji}</span>
+        <span class="ach-name">${a.habit.name}</span>
+        <span class="ach-x">×${ar(a.count)}</span>
+      </div>`).join('')+
+    `</div>`;
 }
 
 /* ================= celebratory popup on completion ================= */
@@ -975,6 +1216,10 @@ function buildStars(){
   document.getElementById('modalClose').onclick = closeModal;
   document.getElementById('modalBackdrop').onclick = (ev)=>{
     if(ev.target.id==='modalBackdrop') closeModal();
+  };
+  document.getElementById('achievementsToggle').onclick = ()=>{
+    achievementsOpen = !achievementsOpen;
+    renderAchievements();
   };
 
   document.getElementById('gearBtn').onclick = ()=>{
